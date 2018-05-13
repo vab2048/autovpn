@@ -116,7 +116,7 @@ fi
 # Temporarily, set the colour to yellow to distinguish "echoing" of options from other output
 echo -e "${yellow}Custom options:"  
 
-while getopts ":CDGSTyk:a:d:hmr:i:p:s:t:u:v:z:" opt; do
+while getopts ":CDGSTyk:a:d:hmr:i:g:p:s:t:u:v:z:" opt; do
   case $opt in
     C) Cflag="defined" ;;
     D) Dflag="defined" ;;        
@@ -125,6 +125,7 @@ while getopts ":CDGSTyk:a:d:hmr:i:p:s:t:u:v:z:" opt; do
     T) Tflag="defined" ;;
     a) custom_ami="$OPTARG"; echo "    custom ami: $ami" ;;
     d) custom_DNS="$OPTARG"; echo "    custom DNS: $custom_DNS";;
+    g) instance_tag_string="$OPTARG"; echo "    instance tag string: $instance_tag_string";;
     h) usage && exit 0 ;; 
     i) instance_type="$OPTARG"; echo "    instance_type: $instance_type" ;;
     k) kflag="defined"; keyname="$OPTARG"; echo "    keyname: $keyname" ;;
@@ -200,7 +201,7 @@ confirm ()
 #Create ec2 instance
 if [ -n "$Cflag" ] && [ -n "$rflag" ] && [ -n "$kflag"  ] ; then
   echo "Creating ec2 instance in $region. This can take some time..."
-  instance_ip=$(python2 ./scripts/create_ec2.py "$keyname" "$instance_type" "$region" "$ami" "$vpn_port" "$subnet_id" "$vpc_id")
+  instance_ip=$(python2 ./scripts/create_ec2.py "$keyname" "$instance_type" "$region" "$ami" "$vpn_port" "$subnet_id" "$vpc_id" "$instance_tag_string")
   [[ $instance_ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || bail 4
   echo -e "${green}Instance has been created $instance_ip"
   echo -e "${yellow}Giving new instance some time to fully boot up..."

@@ -28,10 +28,7 @@ ami=sys.argv[4]
 port=sys.argv[5]
 subnet_id=sys.argv[6] if sys.argv[6] else None
 vpc_id=sys.argv[7] if sys.argv[7] else None
-if region:
-    conn_region = boto.ec2.connect_to_region(region)
-else:
-    conn_region = boto.connect_ec2()
+tag_string=sys.argv[8] if sys.argv[8] else None
 
 if not subnet_id or not vpc_id:
     raise Exception(
@@ -39,8 +36,25 @@ if not subnet_id or not vpc_id:
             subnet_id, vpc_id
         )
     )
-    
-ec2 = conn_region 
+
+ec2 = boto.ec2.connect_to_region(region) if region else boto.connect_ec2()
+
+def generate_tag_dict(tag_string):
+    """
+    The tag_string is a string of k:v pairs delimitted by a comma.
+    e.g. Name:vpn_instance,ResourceType:ec2, etc. 
+    """
+    # Initialise the dictionary we will return
+    d = {}
+    # Split the string into a list of k:v strings
+    k_v_list = tag_string.split(',')
+    # Loop over each k:v string
+    for k_v_string in k_v_list:
+        k_v = k_v_string.split(':')
+        d[k_v[0]] = k_v[1]
+    return d
+
+tag_dict = generate_tag_dict(tag_string) if tag_string else {}
 
 def create_sg(group_name,
               vpn_port,
@@ -64,7 +78,8 @@ def auto_vpn(ami=ami,
                     ssh_port="22",
                     vpn_port=port,
                     cidr="0.0.0.0/0",
-                    tag="auto_vpn",
+                    tag_dict=tag_dict,
+                    #tag="auto_vpc",
                     subnet_id=subnet_id,
                     vpc_id=vpc_id,
                     user_data=None):
@@ -122,8 +137,8 @@ def auto_vpn(ami=ami,
     while instance.state != 'running':
         time.sleep(30)
         instance.update()
-
-        instance.add_tag(tag)
+        for key, value in tag_dict.iteritems():
+            instance.add_tag(key, value)
 
     global host
     host = instance.ip_address
