@@ -35,7 +35,9 @@ function usage {
  eu-central-1 ap-southeast-1 ap-northeast-1 ap-northeast-2\n\t sa-east-1 ap-southeast-2 ap-south-1 ca-central-1.
   $white-p$gray\t Specify custom OpenVPN UDP port.
   $white-u$gray\t Specify custom ssh user.***
+  $white-s$gray\t Specify subnet-id of the subnet in which to launch the EC2 instance (the subnet must belong to the vpc with the ID given by the '-v' flag).***
   $white-t$gray\t Specify custom timeout (in seconds) which is passed to ssh-keyscan to check whether instance is booted fully.***
+  $white-v$gray\t Specify the VPC-id of the VPC in which you would like to associate the autovpn security group and launch the EC2 instance.***
   $white-y$gray\t Skip confirmations
   $white-z$gray\t Specify instance id." 
   echo -e "${white}EXAMPLES:\n $gray Create OpenVPN endpoint: \n\tautovpn -C -r us-east-1 -k us-east-1_vpnkey\n\
@@ -106,23 +108,26 @@ failed ()
 }
 
 #Parse and validate flags
-if ( ! getopts "CDGSTyk:a:d:hmr:i:p:u:z:" opt); then
+if ( ! getopts "CDGSTyk:a:d:hmr:i:p:s:t:u:v:z:" opt); then
 	usage;
 	exit 1;
 fi
 
-while getopts ":CDGSTyk:a:d:hmr:i:p:t:u:z:" opt; do
+# Temporarily, set the colour to yellow to distinguish "echoing" of options from other output
+echo -e "${yellow}Custom options:"  
+
+while getopts ":CDGSTyk:a:d:hmr:i:p:s:t:u:v:z:" opt; do
   case $opt in
     C) Cflag="defined" ;;
     D) Dflag="defined" ;;        
     G) Gflag="defined" ;;
     S) Sflag="defined" ;; 
     T) Tflag="defined" ;;
-    a) custom_ami="$OPTARG" ;;
-    d) custom_DNS="$OPTARG" ;;               
+    a) custom_ami="$OPTARG"; echo "    custom ami: $ami" ;;
+    d) custom_DNS="$OPTARG"; echo "    custom DNS: $custom_DNS";;
     h) usage && exit 0 ;; 
-    i) instance_type="$OPTARG" ;;       	
-    k) kflag="defined"; keyname="$OPTARG" ;;
+    i) instance_type="$OPTARG"; echo "    instance_type: $instance_type" ;;
+    k) kflag="defined"; keyname="$OPTARG"; echo "    keyname: $keyname" ;;
     m) mflag="defined" ;;
     r) rflag="defined"
       if [ "$OPTARG" == "us-east-1" ]; then region="us-east-1"; ami="ami-d05e75b8"
@@ -139,17 +144,24 @@ while getopts ":CDGSTyk:a:d:hmr:i:p:t:u:z:" opt; do
       elif [ "$OPTARG" == "sa-east-1" ]; then region="sa-east-1"; ami="ami-0fb83963"
       elif [ "$OPTARG" == "ap-south-1" ]; then region="ap-south-1"; ami="ami-4a90fa25"
       elif [ "$OPTARG" == "ca-central-1" ]; then region="ca-central-1"; ami="ami-0651e362"
-      else echo "Not a valid region"; bail 3; fi                                               
+      else echo "Not a valid region"; bail 3;
+      fi
+      echo "    region: $region";
       ;; 
-    p) vpn_port="$OPTARG" ;;
+    p) vpn_port="$OPTARG"; echo "    vpn_port: $vpn_port" ;;
+    s) sflag="defined"; subnet_id="$OPTARG"; echo "    subnet_id: $subnet_id" ;;
     t) tflag="defined"; ssh_keyscan_timeout="$OPTARG" ;;
     u) custom_user="$OPTARG" ;;
+    v) vflag="defined"; vpc_id="$OPTARG"; echo "    vpc_id: $vpc_id" ;;
     y) yflag="defined" ;;
     z) zflag="defined"; term_ids="$OPTARG" ;;     
     \?) echo "Invalid option: -$OPTARG" >&2 ; bail 1 ;;
     :)  echo "Option -$OPTARG requires an argument." >&2 ; bail 2      
   esac
 done
+
+# Set the colour of output back to gray
+echo -e "${gray}"
 
 if [[ -z "$instance_type" ]]; then 	instance_type="t2.micro"; fi
 if [[ -n "$custom_ami" ]]; then  ami="$custom_ami"; fi
